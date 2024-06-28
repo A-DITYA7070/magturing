@@ -10,3 +10,4 @@ export interface NewUserRequestBody {
    gender:string;
    dob:Date;
 }
+
