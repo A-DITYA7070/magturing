@@ -6,9 +6,9 @@ export interface userInterface extends Document{
     name:string;
     photo:string;
     email:string;
+    password:string;
     role:"admin" | "user";
     gender:"male" | "female";
-    dob: Date;
     createdAt:Date;
     updateAt:Date;
 }

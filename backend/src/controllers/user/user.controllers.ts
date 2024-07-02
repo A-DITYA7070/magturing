@@ -1,107 +1,166 @@
-import { Request,Response,NextFunction } from "express"
-import userServices from "../../services/user.services.js";
-import { myCache } from "../../app.js";
+import { Request,Response,NextFunction } from "express";
+import { User } from "../../db/models/user.models.js";
+import { NewUserRequestBody } from "../../types/user.types.js";
+import { catchAsyncError } from "../../middlewares/error.middleware.js";
+import ErrorHandler from "../../utils/utility-class.js";
 
 /**
- * Controller function to register a user 
+ * Controller function to create/register new User 
  */
-const register = async(req:Request,res:Response,next:NextFunction) => {
-    try{
-        const {
-            _id,
-            name,
-            email,
-            image,
-            gender,
-            dob
-        } = req.body;
-    
-        if(!_id || !name || !email || !image || !gender || !dob){
-            return res.status(400)
-            .json({
-                success:false,
-                message:"Enter all the fields"
-            })
-        }
-    
-        const user = await userServices.createUser({
-            _id,name,email,gender,image,dob,role:"user"
-        })
-        
-        res.status(200)
-        .json({
-            success:true,
-            user
-        })
-    }catch(err){
-        res.status(500)
-        .json({
-            success:true,
-            message:"Internal server error"
-        });
+const register = catchAsyncError(async(
+    req:Request<{},{},NewUserRequestBody>,
+    res:Response,
+    next:NextFunction
+)=>{
+    const {
+        name,email,photo,_id,gender,password
+    } = req.body;
+
+    if(!name || !email || !photo || !_id || !gender || !password){
+        return next(new ErrorHandler("Bad request",400));
     }
-}
 
-/**
- * Controller function to get all users 
- */
-const getUsers = async(req:Request,res:Response,next:NextFunction) => {
-    try{
-
-        let users;
-        if(myCache.has("users")){
-            users = JSON.parse(myCache.get("users") as string);
-        }else{
-            users = await userServices.getAllUsers();
-            myCache.set("users",JSON.stringify(users));
-        }
-        
-        res.status(200)
+    let user = await User.findById(_id);
+    if(user){
+        return res.status(200)
         .json({
             success:true,
-            users
-        });
+            message:"logged in"
+        })
+    }
 
-    }catch(err){
-        res.status(500)
+    user = await User.create({
+        name,email,photo,gender,_id,password
+    });
+
+    res.status(201)
+    .json({
+        success:true,
+        user
+    })
+});
+
+/**
+ * Controller function to get all users from db --> make sure to use onlyAdmin middleware.
+ */
+const getAllUsers = catchAsyncError(async(
+    req:Request,
+    res:Response,
+    next:NextFunction
+)=>{
+    const users = await User.find({});
+    return res.status(200)
+    .json({
+        success:true,
+        users
+    })
+});
+
+/**
+ * Controller function to get singe user with id.
+ */
+const getUser = catchAsyncError(async(
+    req:Request,
+    res:Response,
+    next:NextFunction
+) => {
+    const id = req.params.id;
+    if(!id){
+        return res.status(400)
         .json({
             success:false,
-            message:err
+            message:"Bad request"
         })
     }
-}
-
-/**
- * Controller function to get user
- */
-const getUser = async(req:Request,res:Response,next:NextFunction) => {
-    try{
-        const id = req.params.id;
-        let user;
-        if(myCache.has(`user-${id}`)){
-            user = JSON.parse(myCache.get(`user-${id}`) as string);
-        }else{
-            user = await userServices.getUser(id);
-            myCache.set(`user-${id}`,JSON.stringify(user));
-        }
-        res.status(200)
+    const user = await User.findById(id);
+    if(!user){
+        return res.status(404)
         .json({
             success:true,
-            user
-        })
-
-    }catch(err){
-        res.status(500)
-        .json({
-            success:false,
-            message:"Internal server error"
+            message:`user not found`
         })
     }
-}
+    res.status(200)
+    .json({
+        success:true,
+        user
+    })
+});
+
+/**
+ * Controller function to delete user -- make sure to user onlyadmin middlewares.
+ */
+const deleteUser = catchAsyncError(async(
+    req:Request,
+    res:Response,
+    next:NextFunction
+) => {
+    const id = req.params.id;
+    if(!id){
+        return res.status(400)
+        .json({
+            success:false,
+            message:"Bad request"
+        })
+    }
+    const user = await User.findById(id);
+    if(!user){
+        return next(new ErrorHandler("Not found",404));
+    }
+    await user.deleteOne();
+    res.status(200)
+    .json({
+        success:true,
+        message:"User deleted successfully"
+    })
+});
+
+/**
+ * Controller function to update the user details.
+ */
+const updateUser = catchAsyncError(async(
+    req:Request,
+    res:Response,
+    next:NextFunction
+) => {
+    const id = req.params.id;
+    if(!id){
+        return next(new ErrorHandler("Bad request",400));
+    }
+    const {
+        name,
+        email,
+        photo,
+        gender
+    } = req.body;
+
+    if(!name && !email && !photo && !gender){
+        return next(new ErrorHandler("Please enter atleast one field to update",400));
+    }
+
+    let user = await User.findById(id);
+    if(!user){
+        return next(new ErrorHandler("User not found",404));
+    }
+    if(email)user.email=email;
+    if(name)user.name=name;
+    if(photo)user.photo=photo;
+    if(gender)user.gender=gender;
+
+    await user.save();
+    res.status(200)
+    .json({
+        success:true,
+        message:"Details updated"
+    });
+});
+
 
 
 export {
+    getAllUsers,
     register,
-    getUsers,
-    getUser
+    getUser,
+    deleteUser,
+    updateUser
 }
