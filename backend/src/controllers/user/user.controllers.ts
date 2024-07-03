@@ -57,7 +57,7 @@ const getAllUsers = catchAsyncError(async(
 });
 
 /**
- * Controller function to get singe user with id.
+ * Controller function to get single user with id.
  */
 const getUser = catchAsyncError(async(
     req:Request,

@@ -1,10 +1,8 @@
 import mongoose from "mongoose";
 
-
 const connectTOMOGODB = () => {
 
     const DB_URI = process.env.MONGO_URI;
-
     if(!DB_URI){
         console.error(`DB Envirnoment variable not defined`);
         return;
