@@ -21,4 +21,16 @@ export const adminOnly = catchAsyncError(async(
         return next(new ErrorHandler("Unauthorised",401));
     }
     next();
+});
+
+/**
+ * Middleware to update blog it can be done by blog author and admin only.
+ */
+export const blogAuth = catchAsyncError(async(
+    req:Request,
+    res:Response,
+    next:NextFunction
+) => {
+    // const id = req.
+
 })
